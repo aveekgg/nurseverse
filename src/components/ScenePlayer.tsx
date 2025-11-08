@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Mic, Volume2, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HintCard, { Hint } from "./HintCard";
-import { useToast } from "@/hooks/use-toast";
+import { useVoiceConversation } from "@/hooks/useVoiceConversation";
+import TranscriptDisplay from "./TranscriptDisplay";
 import hospitalReception from "@/assets/hospital-reception.jpg";
 
 interface ScenePlayerProps {
@@ -12,9 +13,24 @@ interface ScenePlayerProps {
 }
 
 const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
-  const [isRecording, setIsRecording] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const { toast } = useToast();
+  const [currentScene, setCurrentScene] = useState(1);
+  const totalScenes = 5;
+  
+  const {
+    isConnected,
+    isAISpeaking,
+    messages,
+    userTranscriptLive,
+    connect,
+    disconnect,
+  } = useVoiceConversation();
+
+  useEffect(() => {
+    // Auto-connect when component mounts
+    connect();
+    return () => disconnect();
+  }, []);
 
   // Sample hints for the first day scenario
   const hints: Hint[] = [
@@ -33,27 +49,15 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
     },
   ];
 
-  const handleMicClick = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      toast({
-        title: "Recording started",
-        description: "Speak naturally and we'll listen",
-      });
-    } else {
-      toast({
-        title: "Processing your response",
-        description: "Great job! Keep practicing.",
-      });
+  // Progress scenes based on conversation (simplified auto-progress)
+  useEffect(() => {
+    if (messages.length > 4 && currentScene < totalScenes) {
+      const timer = setTimeout(() => {
+        setCurrentScene(prev => Math.min(prev + 1, totalScenes));
+      }, 2000);
+      return () => clearTimeout(timer);
     }
-  };
-
-  const handlePlayAudio = () => {
-    toast({
-      title: "Playing scene audio",
-      description: "Listen to the character's dialogue",
-    });
-  };
+  }, [messages.length, currentScene]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -88,14 +92,6 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={handlePlayAudio}
-              className="rounded-full bg-background/80 backdrop-blur-sm"
-            >
-              <Volume2 className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
               onClick={() => setShowHint(!showHint)}
               className="rounded-full bg-background/80 backdrop-blur-sm"
             >
@@ -118,6 +114,12 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
             )}
           </AnimatePresence>
 
+          {/* Transcript Display */}
+          <TranscriptDisplay 
+            messages={messages} 
+            userTranscriptLive={userTranscriptLive}
+          />
+
           {/* Dialogue Box */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -133,37 +135,41 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
               </p>
             </div>
 
-            {/* Microphone Button */}
+            {/* Status Indicator */}
             <div className="flex justify-center pt-4">
-              <motion.button
-                onClick={handleMicClick}
+              <motion.div
                 className={`
                   relative w-20 h-20 rounded-full flex items-center justify-center
                   transition-all duration-300
-                  ${isRecording 
-                    ? 'bg-encourage shadow-[0_0_30px_hsla(15,90%,65%,0.5)]' 
-                    : 'bg-primary hover:bg-primary/90 shadow-lg'
+                  ${isAISpeaking
+                    ? 'bg-secondary shadow-[0_0_30px_hsla(var(--secondary),0.5)]' 
+                    : isConnected
+                    ? 'bg-primary shadow-lg'
+                    : 'bg-muted'
                   }
                 `}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                animate={isRecording ? { scale: [1, 1.1, 1] } : {}}
-                transition={isRecording ? { repeat: Infinity, duration: 1.5 } : {}}
+                animate={isConnected ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ repeat: Infinity, duration: 2 }}
               >
                 <Mic className="w-8 h-8 text-white" />
-                {isRecording && (
+                {isAISpeaking && (
                   <motion.div
-                    className="absolute inset-0 rounded-full border-4 border-encourage"
+                    className="absolute inset-0 rounded-full border-4 border-secondary"
                     initial={{ scale: 1, opacity: 1 }}
                     animate={{ scale: 1.3, opacity: 0 }}
                     transition={{ repeat: Infinity, duration: 1.5 }}
                   />
                 )}
-              </motion.button>
+              </motion.div>
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-              {isRecording ? "Listening... speak naturally" : "Tap to respond"}
+              {!isConnected 
+                ? "Connecting..." 
+                : isAISpeaking 
+                ? "AI is speaking..." 
+                : "Listening - speak naturally"
+              }
             </p>
           </motion.div>
 
@@ -171,13 +177,13 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
               <span>Scene Progress</span>
-              <span>1 of 5</span>
+              <span>{currentScene} of {totalScenes}</span>
             </div>
             <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-primary"
                 initial={{ width: "0%" }}
-                animate={{ width: "20%" }}
+                animate={{ width: `${(currentScene / totalScenes) * 100}%` }}
                 transition={{ duration: 0.5 }}
               />
             </div>
