@@ -1,3 +1,11 @@
+// Import all images
+import hospitalEntrance from "@/assets/hospital-entrance.jpg";
+import hospitalReception from "@/assets/hospital-reception.jpg";
+import orderingRestaurant from "@/assets/Ordering at a restaurant.png";
+import shiftHandover from "@/assets/Shift handover.png";
+import preparingProcedure from "@/assets/Preparing for a procedure or surgery.png";
+import requestSupplies from "@/assets/Request Supplies:Equipment.png";
+
 export interface ScenarioScene {
   id: string;
   title: string;
@@ -78,7 +86,7 @@ export const scenarios: ScenarioData[] = [
     category: "Hospital",
     duration: "5-7 min",
     difficulty: "beginner",
-    image: "/src/assets/hospital-entrance.jpg",
+    image: hospitalEntrance,
     
     context: {
       situation: "It's your first day as a nurse at a German hospital. Meet Frau Weber at reception to complete your orientation and get started.",
@@ -131,7 +139,7 @@ export const scenarios: ScenarioData[] = [
         id: "arrival",
         title: "Arriving at Reception",
         description: "You arrive at the hospital reception desk to check in for your first day.",
-        background: "/src/assets/hospital-reception.jpg",
+        background: hospitalReception,
         characterPrompt: "You are Frau Weber, greeting a new nurse on their first day. Be welcoming but maintain professional formality. Speak only in German. Start by greeting them and asking how you can help.",
         expectedUserInput: ["greeting", "introduction", "first day"],
         hints: [
@@ -157,7 +165,7 @@ export const scenarios: ScenarioData[] = [
         id: "paperwork",
         title: "Completing Paperwork",
         description: "Frau Weber explains the paperwork you need to complete.",
-        background: "/src/assets/hospital-reception.jpg", 
+        background: hospitalReception, 
         characterPrompt: "Guide the new nurse through the paperwork process. Ask for their documents and explain what forms they need to fill out. Remain helpful and patient.",
         expectedUserInput: ["documents", "forms", "questions about paperwork"],
         hints: [
@@ -178,7 +186,7 @@ export const scenarios: ScenarioData[] = [
         id: "ward-introduction",
         title: "Introduction to the Ward",
         description: "You're being introduced to your ward and supervisor.",
-        background: "/src/assets/hospital-entrance.jpg",
+        background: hospitalEntrance,
         characterPrompt: "Introduce the new nurse to their ward supervisor. Explain the basic layout and whom they should report to. Be encouraging about their first day.",
         expectedUserInput: ["supervisor", "ward", "schedule", "questions"],
         hints: [
@@ -236,7 +244,7 @@ Goal: Help new nurse complete orientation process`,
     category: "Patient Care",
     duration: "4-6 min", 
     difficulty: "beginner",
-    image: "/src/assets/hospital-reception.jpg",
+    image: hospitalReception,
     
     context: {
       situation: "Visit Herr Müller, an elderly patient recovering from surgery, during your morning rounds. Check on his wellbeing and comfort.",
@@ -289,7 +297,7 @@ Goal: Help new nurse complete orientation process`,
         id: "morning-greeting",
         title: "Morning Room Visit",
         description: "You enter the patient's room for morning rounds.",
-        background: "/src/assets/hospital-reception.jpg",
+        background: hospitalReception,
         characterPrompt: "You are Herr Müller, an elderly patient who has been in the hospital for a few days. You're feeling a bit anxious and appreciate when the nurses check on you. Respond warmly to greetings and express minor concerns about your comfort.",
         expectedUserInput: ["greeting", "how are you", "comfort check"],
         hints: [
@@ -352,7 +360,7 @@ Goal: Interact naturally with the nurse, allowing them to practice patient care 
     category: "Workplace",
     duration: "6-8 min",
     difficulty: "beginner",
-    image: "/src/assets/hospital-reception.jpg",
+    image: hospitalReception,
     
     context: {
       situation: "First day as marketing manager at a German tech company. Meet Anna from HR to get oriented and learn about your team.",
@@ -405,7 +413,7 @@ Goal: Interact naturally with the nurse, allowing them to practice patient care 
         id: "hr-meeting",
         title: "Meeting HR",
         description: "You arrive at the office and meet with Anna from HR for your orientation.",
-        background: "/src/assets/modern-office-reception.jpg",
+        background: hospitalReception,
         characterPrompt: "You are Anna Schmidt, a friendly HR representative welcoming a new marketing manager. Be professional but warm, help them feel comfortable, and guide them through their first day orientation.",
         expectedUserInput: ["greeting", "introduction", "enthusiasm"],
         hints: [
@@ -468,7 +476,7 @@ Goal: Help new marketing manager get oriented and feel welcome`,
     category: "Dining",
     duration: "4-6 min",
     difficulty: "intermediate",
-    image: "/src/assets/Ordering at a restaurant.png",
+    image: orderingRestaurant,
     
     context: {
       situation: "You're dining at a cozy German restaurant. Order your meal from Hans, the friendly server who speaks only German.",
@@ -521,7 +529,7 @@ Goal: Help new marketing manager get oriented and feel welcome`,
         id: "greeting-seating",
         title: "Arrival and Seating",
         description: "You enter the restaurant and are greeted by the server.",
-        background: "/src/assets/german-restaurant-interior.jpg",
+        background: orderingRestaurant,
         characterPrompt: "You are Hans, a friendly server at a traditional German restaurant. Greet the customer warmly, ask about seating preferences, and offer the menu.",
         expectedUserInput: ["greeting", "seating", "menu"],
         hints: [
@@ -583,7 +591,7 @@ Goal: Help customer have a pleasant dining experience while practicing German`,
     category: "Hospital",
     duration: "5-7 min",
     difficulty: "intermediate",
-    image: "/src/assets/Shift handover.png",
+    image: shiftHandover,
     
     context: {
       situation: "End of your shift. Brief Nurse Martin about your patients' status, medications, and any special concerns before leaving.",
@@ -636,7 +644,7 @@ Goal: Help customer have a pleasant dining experience while practicing German`,
         id: "handover-briefing",
         title: "Shift Transition",
         description: "Brief the incoming nurse about your patients.",
-        background: "/src/assets/Shift handover.png",
+        background: shiftHandover,
         characterPrompt: "You are Martin, an experienced nurse arriving for evening shift. Greet your colleague and ask for the handover briefing. Ask clarifying questions about patient status.",
         expectedUserInput: ["greeting", "patient status", "medications"],
         hints: [
@@ -697,7 +705,7 @@ Goal: Receive complete patient information from outgoing nurse`,
     category: "Patient Care",
     duration: "5-7 min",
     difficulty: "intermediate",
-    image: "/src/assets/Preparing for a procedure or surgery.png",
+    image: preparingProcedure,
     
     context: {
       situation: "Patient Frau Klein is scheduled for a minor procedure. She's nervous and has questions. Explain the process and provide reassurance.",
@@ -750,7 +758,7 @@ Goal: Receive complete patient information from outgoing nurse`,
         id: "procedure-explanation",
         title: "Pre-Procedure Discussion",
         description: "Explain the procedure to the patient and address concerns.",
-        background: "/src/assets/Preparing for a procedure or surgery.png",
+        background: preparingProcedure,
         characterPrompt: "You are Frau Klein, a nervous patient about to undergo a minor procedure. Express your anxiety and ask questions. You need reassurance.",
         expectedUserInput: ["greeting", "explanation", "reassurance"],
         hints: [
@@ -811,7 +819,7 @@ Goal: Get information and reassurance about your upcoming procedure`,
     category: "Hospital",
     duration: "4-6 min",
     difficulty: "beginner",
-    image: "/src/assets/Request Supplies:Equipment.png",
+    image: requestSupplies,
     
     context: {
       situation: "Your ward is running low on supplies. Contact Thomas from supply management to request restocking of essential items.",
@@ -864,7 +872,7 @@ Goal: Get information and reassurance about your upcoming procedure`,
         id: "supply-request",
         title: "Requesting Supplies",
         description: "Contact supply management to order necessary items.",
-        background: "/src/assets/Request Supplies:Equipment.png",
+        background: requestSupplies,
         characterPrompt: "You are Thomas, the supply coordinator. Help the nurse order supplies. Ask for specifics about what they need and quantities.",
         expectedUserInput: ["greeting", "supply list", "quantities"],
         hints: [
