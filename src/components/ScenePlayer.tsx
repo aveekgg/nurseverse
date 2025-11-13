@@ -14,6 +14,7 @@ import { ChatInput } from './ChatInput';
 import { PronunciationFeedback, analyzePronunciation } from './PronunciationFeedback';
 import { SessionManager } from '../utils/sessionManager';
 import { getLanguageLabels, getLanguageConfig, getDefaultGreeting, generateContextualResponses as getContextualResponses, getCommonPhrases, getVoiceIdForLanguage } from '../utils/languageConfig';
+import { TurnIndicator } from './TurnIndicator';
 
 interface Message {
   id: string;
@@ -60,6 +61,7 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [isCharacterSpeaking, setIsCharacterSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [showMessageHistory, setShowMessageHistory] = useState(false);
   const [showHints, setShowHints] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
@@ -99,6 +101,8 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
     connect,
     disconnect,
     sendTextMessage,
+    startListening,
+    stopListening,
   } = useVapiConversation();
 
   // Initialize session and objectives from scenario
@@ -232,11 +236,49 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
   const cleanMessage = (content: string): string => {
     if (!content) return "";
     
-    // Remove common English words that shouldn't be in German responses
+    // Remove repeated consecutive phrases (e.g., "Guten Tag Guten Tag" -> "Guten Tag")
+    const removeConsecutiveDuplicates = (text: string): string => {
+      // Split into words
+      const words = text.split(' ');
+      const result = [];
+      let i = 0;
+      
+      while (i < words.length) {
+        const currentWord = words[i];
+        result.push(currentWord);
+        
+        // Look ahead to see if we have repeating patterns
+        let patternLength = 1;
+        let maxPatternLength = Math.min(5, Math.floor((words.length - i) / 2)); // Check up to 5-word patterns
+        
+        for (let len = 1; len <= maxPatternLength; len++) {
+          const pattern = words.slice(i, i + len).join(' ');
+          const next = words.slice(i + len, i + len + len).join(' ');
+          
+          if (pattern === next) {
+            patternLength = len;
+          }
+        }
+        
+        // Skip the duplicate pattern
+        if (patternLength > 1) {
+          i += patternLength;
+        } else {
+          i++;
+        }
+      }
+      
+      return result.join(' ');
+    };
+    
+    // First pass: remove consecutive duplicates
+    let cleaned = removeConsecutiveDuplicates(content);
+    
+    // Remove common English words that shouldn't be in target language responses
     const englishWords = ['good', 'and', 'the', 'is', 'are', 'you', 'me', 'what', 'does', 'this', 'mean', 'only'];
     
     // Split into sentences and process each
-    const sentences = content.split(/[.!?]+/).map(sentence => {
+    const sentences = cleaned.split(/[.!?]+/).map(sentence => {
       const words = sentence.trim().split(' ');
       
       // Filter out English words and repetitions
@@ -246,7 +288,7 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
         // Skip empty words
         if (!word.trim()) return false;
         
-        // Skip English words
+        // Skip English words (only if they're standalone, not part of target language)
         if (englishWords.includes(lowerWord)) return false;
         
         // Skip immediate repetitions (same word appearing consecutively)
@@ -339,6 +381,18 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
     }
   }, [messages, scenario, isAISpeaking]); // Add isAISpeaking as dependency
 
+  // Synchronize AI speaking state and handle processing
+  useEffect(() => {
+    setIsCharacterSpeaking(isAISpeaking);
+    
+    // Detect processing state: when user just finished speaking but AI hasn't started yet
+    if (userTranscriptLive === '⏳ Processing...' || userTranscriptLive === '🎤 Listening...') {
+      setIsProcessing(userTranscriptLive === '⏳ Processing...');
+    } else if (isAISpeaking) {
+      setIsProcessing(false);
+    }
+  }, [isAISpeaking, userTranscriptLive]);
+
   // Dynamic goal evaluation - more sophisticated
   const evaluateObjectives = (messageHistory: Message[]) => {
     if (!scenario?.context.conversationGoals?.completionTriggers) return;
@@ -423,9 +477,14 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
     const wasRecording = isRecording;
     setIsRecording(!isRecording);
     
-    if (wasRecording) {
-      // Stopped recording - provide feedback
-      console.log("Recording stopped - waiting for VAPI transcription");
+    if (!wasRecording) {
+      // Start recording - enable push-to-talk
+      console.log("🎤 Started push-to-talk recording");
+      startListening();
+    } else {
+      // Stop recording - disable push-to-talk
+      console.log("🎤 Stopped push-to-talk recording");
+      stopListening();
     }
   };
   
@@ -538,11 +597,11 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {/* Message history */}
               <button
                 onClick={() => setShowMessageHistory(true)}
-                className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                className="p-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors"
                 title="View conversation history"
               >
                 <History className="w-4 h-4 text-white/80" />
@@ -551,19 +610,30 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
               {/* Goals */}
               <button
                 onClick={() => setShowGoals(true)}
-                className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                className="p-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors"
                 title="View learning goals"
               >
                 <Target className="w-4 h-4 text-emerald-300" />
               </button>
 
-              {/* Pronunciation feedback */}
+              {/* Pronunciation feedback with notification badge */}
               <button
-                onClick={() => setShowFeedback(true)}
-                className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                onClick={() => {
+                  setShowFeedback(true);
+                  setShowFeedbackPopup(false); // Clear badge when opened
+                }}
+                className="relative p-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors"
                 title="View pronunciation feedback"
               >
                 <TrendingUp className="w-4 h-4 text-indigo-300" />
+                {/* New feedback badge */}
+                {showFeedbackPopup && lastFeedback && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-black/80"
+                  />
+                )}
               </button>
 
               {/* Reset conversation button */}
@@ -635,52 +705,53 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
             />
           )}
 
-          {/* User is speaking/processing indicator */}
+          {/* User is speaking/processing indicator - show in single updating card */}
           {userTranscriptLive && (
             <motion.div
+              key="live-user-transcript"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="ml-auto"
+              className="ml-auto max-w-[85%]"
             >
-              {userTranscriptLive.includes('Listening') || userTranscriptLive.includes('Processing') ? (
-                <div className="flex items-center gap-3 bg-emerald-500/20 backdrop-blur-sm rounded-2xl px-4 py-3 max-w-xs border border-emerald-400/30">
-                  <div className="text-sm text-emerald-100 font-medium">
-                    {userTranscriptLive}
-                  </div>
+              <div className="bg-emerald-500/20 backdrop-blur-sm rounded-2xl px-4 py-3 border border-emerald-400/30">
+                <div className="flex items-center gap-2 mb-2">
                   <div className="flex gap-1">
                     <div className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
                     <div className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
                     <div className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
                   </div>
+                  <span className="text-xs text-white/70">
+                    {userTranscriptLive.includes('Listening') ? 'Listening...' : 
+                     userTranscriptLive.includes('Processing') ? 'Processing...' : 
+                     'You are speaking...'}
+                  </span>
                 </div>
-              ) : (
-                <DialogueMessage
-                  germanText={userTranscriptLive}
-                  englishText="You are saying..."
-                  characterName="You"
-                  isFromUser={true}
-                  defaultTranslationOpen={false}
-                  onPlayAudio={() => {}}
-                />
-              )}
+                {!userTranscriptLive.includes('Listening') && !userTranscriptLive.includes('Processing') && (
+                  <p className="text-white/90 text-sm font-medium">{userTranscriptLive}</p>
+                )}
+              </div>
             </motion.div>
           )}
 
-          {/* AI is speaking indicator - show live transcript */}
+          {/* AI is speaking indicator - show live transcript in a single updating card */}
           {isCharacterSpeaking && assistantTranscriptLive && (
             <motion.div
+              key="live-assistant-transcript"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mr-auto"
+              className="mr-auto max-w-[85%]"
             >
-              <DialogueMessage
-                germanText={assistantTranscriptLive}
-                englishText={getTranslation(assistantTranscriptLive)}
-                characterName={scenario?.character.name || "Character"}
-                isFromUser={false}
-                defaultTranslationOpen={false}
-                onPlayAudio={() => console.log('Play live audio')}
-              />
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
+                  </div>
+                  <span className="text-xs text-white/70">{scenario?.character.name || "Character"} is speaking...</span>
+                </div>
+                <p className="text-white/90 text-sm font-medium">{assistantTranscriptLive}</p>
+              </div>
             </motion.div>
           )}
           
@@ -731,63 +802,17 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
         </div>
       </div>
       
-      {/* Feedback Popup - shows after each response */}
-      <AnimatePresence>
-        {showFeedbackPopup && lastFeedback && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed bottom-32 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4"
-          >
-            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-4">
-              <div className="flex items-start justify-between mb-2">
-                <h4 className="font-semibold text-slate-800 text-sm">Quick Feedback</h4>
-                <button
-                  onClick={() => setShowFeedbackPopup(false)}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${
-                    lastFeedback.pronunciationScore >= 80 ? 'text-green-600' :
-                    lastFeedback.pronunciationScore >= 60 ? 'text-amber-600' : 'text-red-600'
-                  }`}>
-                    {lastFeedback.pronunciationScore}%
-                  </div>
-                  <div className="text-xs text-slate-600">Pronunciation</div>
-                </div>
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${
-                    lastFeedback.grammarScore >= 80 ? 'text-green-600' :
-                    lastFeedback.grammarScore >= 60 ? 'text-amber-600' : 'text-red-600'
-                  }`}>
-                    {Math.round(lastFeedback.grammarScore)}%
-                  </div>
-                  <div className="text-xs text-slate-600">Grammar</div>
-                </div>
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${
-                    lastFeedback.fluencyScore >= 80 ? 'text-green-600' :
-                    lastFeedback.fluencyScore >= 60 ? 'text-amber-600' : 'text-red-600'
-                  }`}>
-                    {Math.round(lastFeedback.fluencyScore)}%
-                  </div>
-                  <div className="text-xs text-slate-600">Fluency</div>
-                </div>
-              </div>
-              
-              <p className="text-xs text-slate-600 mt-2">
-                {lastFeedback.feedback}
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Feedback notification removed - now accessed via navbar button */}
+
+      {/* Turn Indicator - Shows who should be speaking */}
+      <div className="fixed bottom-32 sm:bottom-36 left-0 right-0 flex justify-center z-40 pointer-events-none px-4">
+        <TurnIndicator
+          isAISpeaking={isCharacterSpeaking}
+          isUserSpeaking={isRecording}
+          isProcessing={isProcessing}
+          isConnected={isConnected}
+        />
+      </div>
 
       {/* Chat Input with Hints */}
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-md z-40">
@@ -803,16 +828,16 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
             />
           </div>
 
-          {/* Chat input area */}
-          <div className="p-4">
-            <div className="flex items-center gap-3">
+          {/* Chat input area - Mobile optimized */}
+          <div className="p-3 sm:p-4">
+            <div className="flex items-center gap-2">
               {/* Hints button */}
               <button
                 onClick={() => setShowHints(!showHints)}
-                className={`p-3 rounded-full transition-colors ${
+                className={`flex-shrink-0 p-2.5 sm:p-3 rounded-full transition-colors ${
                   showHints 
                     ? 'bg-amber-500/80 text-white' 
-                    : 'bg-white/20 text-white hover:bg-white/30'
+                    : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40'
                 }`}
                 title="Show suggested responses"
               >
@@ -820,7 +845,7 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
               </button>
 
               {/* Chat Input with Send Button */}
-              <div className="flex-1 flex items-center gap-2 relative">
+              <div className="flex-1 flex items-center gap-2 relative min-w-0">
                 <input
                   type="text"
                   id="message-input"
@@ -867,50 +892,60 @@ const ScenePlayer = ({ scenarioId, onBack }: ScenePlayerProps) => {
               </div>
 
               {/* Voice Input Button */}
-              <button
-                onClick={handleMicToggle}
-                disabled={!isConnected || isCharacterSpeaking}
-                className={`
-                  p-3 rounded-xl flex items-center justify-center transition-all duration-300
-                  ${isCharacterSpeaking
-                    ? 'bg-gray-500/80 cursor-not-allowed'
-                    : isRecording
-                    ? 'bg-red-500/90 hover:bg-red-600/90 animate-pulse'
-                    : isConnected
-                    ? 'bg-green-500/90 hover:bg-green-600/90'
-                    : 'bg-gray-500/80'
+              <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                <button
+                  onClick={handleMicToggle}
+                  disabled={!isConnected || isCharacterSpeaking}
+                  className={`
+                    p-2.5 sm:p-3 rounded-xl flex items-center justify-center transition-all duration-300
+                    ${isCharacterSpeaking
+                      ? 'bg-gray-500/80 cursor-not-allowed'
+                      : isRecording
+                      ? 'bg-red-500/90 hover:bg-red-600/90 active:bg-red-700/90 animate-pulse'
+                      : isConnected
+                      ? 'bg-green-500/90 hover:bg-green-600/90 active:bg-green-700/90'
+                      : 'bg-gray-500/80'
+                    }
+                  `}
+                  title={
+                    !isConnected ? 'Click to connect' :
+                    isCharacterSpeaking ? 'AI is speaking...' :
+                    isRecording ? 'Speaking - Release to send' :
+                    'Press to talk'
                   }
-                `}
-              >
-                {isRecording ? (
-                  <Square className="w-5 h-5 text-white fill-current" />
-                ) : (
-                  <Mic className="w-5 h-5 text-white" />
-                )}
-              </button>
+                >
+                  {isRecording ? (
+                    <Square className="w-5 h-5 text-white fill-current" />
+                  ) : (
+                    <Mic className="w-5 h-5 text-white" />
+                  )}
+                </button>
+                <span className="text-[10px] text-white/60 whitespace-nowrap">
+                  {!isConnected ? 'Connect' :
+                   isCharacterSpeaking ? 'Wait...' :
+                   isRecording ? 'Release' :
+                   'Press'}
+                </span>
+              </div>
             </div>
 
-            {/* Quick hint: Show current suggestions */}
-            {getCurrentResponseOptions().length > 0 && (
-              <div className="mt-2">
-                {!showHints ? (
-                  <div className="text-center">
-                    <p className="text-xs text-white/70 mb-2">
-                      💡 Tap the lightbulb for helpful German responses
-                    </p>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {getCurrentResponseOptions().slice(0, 2).map((option, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handleSuggestionSelect(option.german)}
-                          className="px-3 py-1 bg-white/20 rounded-full text-xs text-white whitespace-nowrap hover:bg-white/30 transition-colors"
-                        >
-                          {option.german}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+            {/* Quick hint: Show current suggestions - Mobile optimized */}
+            {getCurrentResponseOptions().length > 0 && !showHints && (
+              <div className="mt-3">
+                <p className="text-xs text-white/70 mb-2 text-center">
+                  💡 Tap the lightbulb for helpful responses
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide">
+                  {getCurrentResponseOptions().slice(0, 3).map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestionSelect(option.german)}
+                      className="flex-shrink-0 px-4 py-2 bg-white/20 rounded-full text-xs text-white whitespace-nowrap hover:bg-white/30 active:bg-white/40 transition-colors shadow-sm"
+                    >
+                      {option.german}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

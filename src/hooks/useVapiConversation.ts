@@ -19,6 +19,8 @@ interface UseVapiConversationReturn {
   connect: (scenarioConfig?: any) => Promise<void>;
   disconnect: () => void;
   sendTextMessage: (text: string) => void;
+  startListening: () => void;
+  stopListening: () => void;
 }
 
 export const useVapiConversation = (): UseVapiConversationReturn => {
@@ -34,6 +36,9 @@ export const useVapiConversation = (): UseVapiConversationReturn => {
   // Accumulate assistant response until complete
   const assistantMessageBuffer = useRef<string>('');
   const isAccumulatingAssistant = useRef<boolean>(false);
+  
+  // Track if user input should be captured (push-to-talk)
+  const shouldListenRef = useRef<boolean>(false);
   
   // Inactivity tracking
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -127,6 +132,11 @@ export const useVapiConversation = (): UseVapiConversationReturn => {
 
     // Speech events
     vapiRef.current.on('speech-start', () => {
+      // Only process if we're expecting user input (push-to-talk active)
+      if (!shouldListenRef.current) {
+        console.log('Speech detected but not in listening mode - ignoring');
+        return;
+      }
       console.log('User started speaking');
       setUserTranscriptLive('🎤 Listening...');
       resetInactivityTimer(); // User is active
@@ -173,6 +183,12 @@ export const useVapiConversation = (): UseVapiConversationReturn => {
         const isFinal = message.transcriptType === 'final';
         
         if (message.role === 'user') {
+          // Only process user transcripts if we're in listening mode
+          if (!shouldListenRef.current) {
+            console.log('User transcript received but not in listening mode - ignoring');
+            return;
+          }
+          
           if (isFinal && message.transcript) {
             // Add final user message with deduplication
             setMessages(prev => {
@@ -190,6 +206,8 @@ export const useVapiConversation = (): UseVapiConversationReturn => {
               }];
             });
             setUserTranscriptLive('');
+            // Reset listening mode after message is complete
+            shouldListenRef.current = false;
           } else if (message.transcript) {
             // Update live transcript for partial messages
             setUserTranscriptLive(message.transcript);
@@ -298,6 +316,14 @@ export const useVapiConversation = (): UseVapiConversationReturn => {
             provider: "11labs",
             voiceId: getVoiceIdForLanguage() // Language-appropriate voice
           },
+          transcriber: {
+            provider: "deepgram",
+            model: "nova-2",
+            language: "multi", // Support multiple languages
+            // Push-to-talk configuration - disable automatic speech detection
+            keywords: [],
+            endpointing: 255, // High value to prevent auto-stop
+          },
           firstMessage: getDefaultGreeting()
         };
         
@@ -391,6 +417,22 @@ export const useVapiConversation = (): UseVapiConversationReturn => {
     }
   };
 
+  const startListening = () => {
+    if (!isConnected) {
+      console.log('Not connected - cannot start listening');
+      return;
+    }
+    console.log('🎤 Push-to-talk: Started listening');
+    shouldListenRef.current = true;
+    setUserTranscriptLive('🎤 Listening...');
+  };
+
+  const stopListening = () => {
+    console.log('🎤 Push-to-talk: Stopped listening');
+    shouldListenRef.current = false;
+    // Don't clear transcript immediately - let it process
+  };
+
   return {
     isConnected,
     isAISpeaking,
@@ -400,5 +442,7 @@ export const useVapiConversation = (): UseVapiConversationReturn => {
     connect,
     disconnect,
     sendTextMessage,
+    startListening,
+    stopListening,
   };
 };

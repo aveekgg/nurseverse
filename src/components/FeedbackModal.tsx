@@ -93,8 +93,47 @@ export function FeedbackModal({
               </button>
             </div>
 
+            {/* Latest Feedback - Prominent Display */}
+            {feedbackHistory.length > 0 && (
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-indigo-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Latest Feedback</h3>
+                </div>
+                <div className="bg-white rounded-lg p-3 shadow-sm">
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div className="text-center">
+                      <div className={`text-xl font-bold ${getScoreColor(feedbackHistory[feedbackHistory.length - 1].pronunciationScore)}`}>
+                        {feedbackHistory[feedbackHistory.length - 1].pronunciationScore}%
+                      </div>
+                      <div className="text-xs text-slate-600">Pronunciation</div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-xl font-bold ${getScoreColor(feedbackHistory[feedbackHistory.length - 1].grammarScore)}`}>
+                        {Math.round(feedbackHistory[feedbackHistory.length - 1].grammarScore)}%
+                      </div>
+                      <div className="text-xs text-slate-600">Grammar</div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-xl font-bold ${getScoreColor(feedbackHistory[feedbackHistory.length - 1].fluencyScore)}`}>
+                        {Math.round(feedbackHistory[feedbackHistory.length - 1].fluencyScore)}%
+                      </div>
+                      <div className="text-xs text-slate-600">Fluency</div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 italic text-center mt-2">
+                    "{feedbackHistory[feedbackHistory.length - 1].germanText}"
+                  </p>
+                  <p className="text-xs text-slate-700 mt-1">
+                    {feedbackHistory[feedbackHistory.length - 1].feedback}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Overall Stats */}
-            <div className="p-4 bg-gradient-to-r from-indigo-50 to-slate-50">
+            <div className="p-4 bg-gradient-to-r from-indigo-50 to-slate-50 border-b border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">Conversation Average</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className={`text-2xl font-bold ${getScoreColor(overallScore)}`}>
