@@ -1,38 +1,36 @@
 import { motion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import ScenarioCard, { Scenario } from "./ScenarioCard";
-import hospitalEntrance from "@/assets/hospital-entrance.jpg";
-import hospitalReception from "@/assets/hospital-reception.jpg";
+import { scenarios } from "@/data/scenarios";
+import { ScenarioBuilder } from "./ScenarioBuilder";
+import { useState } from "react";
 
 interface ScenarioSelectorProps {
   onBack: () => void;
   onSelectScenario: (scenarioId: string) => void;
 }
 
-const scenarios: Scenario[] = [
-  {
-    id: "first-day",
-    title: "First Day at Hospital",
-    description: "Meet your new colleagues and learn about hospital procedures in your first day orientation.",
-    category: "Hospital",
-    duration: "5-7 min",
-    difficulty: "beginner",
-    image: hospitalEntrance,
-  },
-  {
-    id: "patient-greeting",
-    title: "Patient Greeting & Care",
-    description: "Practice greeting patients warmly and understanding their basic needs in a comforting way.",
-    category: "Patient Care",
-    duration: "4-6 min",
-    difficulty: "beginner",
-    image: hospitalReception,
-  },
-  // More scenarios can be added here
-];
-
 const ScenarioSelector = ({ onBack, onSelectScenario }: ScenarioSelectorProps) => {
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [customScenarios, setCustomScenarios] = useState<any[]>([]);
+
+  // Convert the new scenario data to the format expected by ScenarioCard
+  const scenarioCards: Scenario[] = [...scenarios, ...customScenarios].map(scenario => ({
+    id: scenario.id,
+    title: scenario.title,
+    description: scenario.description,
+    category: scenario.category,
+    duration: scenario.duration,
+    difficulty: scenario.difficulty,
+    image: scenario.image,
+  }));
+
+  const handleCustomScenarioCreated = (newScenario: any) => {
+    setCustomScenarios([...customScenarios, newScenario]);
+  };
+
   return (
     <div className="min-h-screen px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -58,7 +56,26 @@ const ScenarioSelector = ({ onBack, onSelectScenario }: ScenarioSelectorProps) =
 
         {/* Scenarios Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {scenarios.map((scenario, index) => (
+          {/* Create Custom Scenario Card */}
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-dashed border-emerald-300 hover:border-emerald-400 bg-gradient-to-br from-emerald-25 to-white"
+            onClick={() => setShowBuilder(true)}
+          >
+            <CardContent className="flex flex-col items-center justify-center h-64 p-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                <Plus className="h-8 w-8 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-emerald-700 mb-2">
+                Create Custom Scenario
+              </h3>
+              <p className="text-sm text-emerald-600">
+                Build your own practice scenario
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Existing Scenario Cards */}
+          {scenarioCards.map((scenario, index) => (
             <ScenarioCard
               key={scenario.id}
               scenario={scenario}
@@ -67,6 +84,19 @@ const ScenarioSelector = ({ onBack, onSelectScenario }: ScenarioSelectorProps) =
             />
           ))}
         </div>
+
+      {/* Scenario Builder Modal */}
+      {showBuilder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <ScenarioBuilder
+              isVisible={showBuilder}
+              onClose={() => setShowBuilder(false)}
+              onScenarioCreated={handleCustomScenarioCreated}
+            />
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

@@ -2,13 +2,17 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Welcome from "@/components/Welcome";
 import ScenarioSelector from "@/components/ScenarioSelector";
+import ScenarioContext from "@/components/ScenarioContext";
 import ScenePlayer from "@/components/ScenePlayer";
+import { getScenarioById } from "@/data/scenarios";
 
-type View = "welcome" | "scenarios" | "scene";
+type View = "welcome" | "scenarios" | "context" | "scene";
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<View>("welcome");
   const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
+
+  const scenario = selectedScenario ? getScenarioById(selectedScenario) : null;
 
   const handleStart = () => {
     setCurrentView("scenarios");
@@ -16,12 +20,20 @@ const Index = () => {
 
   const handleSelectScenario = (scenarioId: string) => {
     setSelectedScenario(scenarioId);
+    setCurrentView("context");
+  };
+
+  const handleStartRolePlay = () => {
     setCurrentView("scene");
   };
 
   const handleBackToScenarios = () => {
     setCurrentView("scenarios");
     setSelectedScenario(null);
+  };
+
+  const handleBackToContext = () => {
+    setCurrentView("context");
   };
 
   const handleBackToWelcome = () => {
@@ -59,17 +71,33 @@ const Index = () => {
           </motion.div>
         )}
 
-        {currentView === "scene" && selectedScenario && (
+        {currentView === "context" && scenario && (
           <motion.div
-            key="scene"
+            key="context"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
             transition={{ duration: 0.4 }}
           >
+            <ScenarioContext
+              scenario={scenario}
+              onBack={handleBackToScenarios}
+              onStart={handleStartRolePlay}
+            />
+          </motion.div>
+        )}
+
+        {currentView === "scene" && selectedScenario && (
+          <motion.div
+            key="scene"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4 }}
+          >
             <ScenePlayer
               scenarioId={selectedScenario}
-              onBack={handleBackToScenarios}
+              onBack={handleBackToContext}
             />
           </motion.div>
         )}

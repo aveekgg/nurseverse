@@ -50,6 +50,48 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Language Configuration
+
+This app supports learning **any language** you want! Configure it through environment variables:
+
+### Quick Setup
+
+1. Copy `.env.example` to `.env`
+2. Set your language preferences:
+
+```env
+# Example: Learning German from English
+VITE_LANGUAGE_TO_LEARN="German"
+VITE_LANGUAGE_TO_LEARN_CODE="de"
+VITE_LANGUAGE_KNOWN="English"
+VITE_LANGUAGE_KNOWN_CODE="en"
+```
+
+### Examples
+
+**Learning Hindi from English:**
+```env
+VITE_LANGUAGE_TO_LEARN="Hindi"
+VITE_LANGUAGE_TO_LEARN_CODE="hi"
+VITE_LANGUAGE_KNOWN="English"
+VITE_LANGUAGE_KNOWN_CODE="en"
+```
+
+**Learning Spanish from English:**
+```env
+VITE_LANGUAGE_TO_LEARN="Spanish"
+VITE_LANGUAGE_TO_LEARN_CODE="es"
+VITE_LANGUAGE_KNOWN="English"
+VITE_LANGUAGE_KNOWN_CODE="en"
+```
+
+**Supported Languages:**
+- German (de), Hindi (hi), Spanish (es), French (fr), Italian (it)
+- Portuguese (pt), Japanese (ja), Chinese (zh), Korean (ko)
+- Arabic (ar), Russian (ru), Dutch (nl), Swedish (sv), Polish (pl), Turkish (tr)
+
+The AI assistant will automatically speak and teach in your chosen target language!
+
 ## What technologies are used for this project?
 
 This project is built with:
@@ -59,6 +101,7 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- VAPI AI (Voice AI)
 
 ## How can I deploy this project?
 
